@@ -27,8 +27,15 @@ public class RpcClient {
         this.serviceDiscovery = serviceDiscovery;
     }
 
+    /**
+     * 使用JDK动态代理
+     * @param interfaceClass
+     * @param <T>
+     * @return
+     */
     @SuppressWarnings("unchecked")
     public static <T> T create(Class<T> interfaceClass) {
+        //Proxy.newProxyInstance---获得代理的实例
         return (T) Proxy.newProxyInstance(
                 interfaceClass.getClassLoader(),
                 new Class<?>[]{interfaceClass},

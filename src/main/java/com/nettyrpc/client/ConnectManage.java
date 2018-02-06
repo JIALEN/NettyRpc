@@ -21,7 +21,6 @@ import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * RPC Connect Manage of ZooKeeper
- * Created by luxiaoxun on 2016-03-16.
  */
 public class ConnectManage {
     private static final Logger logger = LoggerFactory.getLogger(ConnectManage.class);
@@ -32,12 +31,13 @@ public class ConnectManage {
 
     private CopyOnWriteArrayList<RpcClientHandler> connectedHandlers = new CopyOnWriteArrayList<>();
     private Map<InetSocketAddress, RpcClientHandler> connectedServerNodes = new ConcurrentHashMap<>();
-    //private Map<InetSocketAddress, Channel> connectedServerNodes = new ConcurrentHashMap<>();
-
+     //重入锁ReentrantLock来实现同步
     private ReentrantLock lock = new ReentrantLock();
+    //条件对象
     private Condition connected = lock.newCondition();
     private long connectTimeoutMillis = 6000;
     private AtomicInteger roundRobin = new AtomicInteger(0);
+    //线程间可见
     private volatile boolean isRuning = true;
 
     private ConnectManage() {
@@ -151,10 +151,11 @@ public class ConnectManage {
             lock.unlock();
         }
     }
-
+    //等待
     private boolean waitingForHandler() throws InterruptedException {
         lock.lock();
         try {
+            //指定时间之内没有收到signal()或signalALL()信号或者线程中断时该方法会返回false;其它情况返回true。
             return connected.await(this.connectTimeoutMillis, TimeUnit.MILLISECONDS);
         } finally {
             lock.unlock();
@@ -162,7 +163,8 @@ public class ConnectManage {
     }
 
     public RpcClientHandler chooseHandler() {
-        CopyOnWriteArrayList<RpcClientHandler> handlers = (CopyOnWriteArrayList<RpcClientHandler>) this.connectedHandlers.clone();
+        //CopyOnWrite容器即写时复制的容器,进行并发的读，而不需要加锁，写时先copy一份,加锁在写
+        CopyOnWriteArrayList<RpcClientHandler> handlers = (CopyOnWriteArrayList<RpcClientHandler>) this.connectedHandlers.clone();//拷贝，原型模式
         int size = handlers.size();
         while (isRuning && size <= 0) {
             try {

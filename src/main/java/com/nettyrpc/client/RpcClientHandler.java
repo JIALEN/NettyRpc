@@ -12,7 +12,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 
 /**
- * Created by luxiaoxun on 2016-03-14.
+ * 客户端handler
  */
 public class RpcClientHandler extends SimpleChannelInboundHandler<RpcResponse> {
     private static final Logger logger = LoggerFactory.getLogger(RpcClientHandler.class);
@@ -42,6 +42,7 @@ public class RpcClientHandler extends SimpleChannelInboundHandler<RpcResponse> {
         this.channel = ctx.channel();
     }
 
+    //处理服务端的响应
     @Override
     public void channelRead0(ChannelHandlerContext ctx, RpcResponse response) throws Exception {
         String requestId = response.getRequestId();
@@ -62,17 +63,22 @@ public class RpcClientHandler extends SimpleChannelInboundHandler<RpcResponse> {
         channel.writeAndFlush(Unpooled.EMPTY_BUFFER).addListener(ChannelFutureListener.CLOSE);
     }
 
+    //发送请求数据到服务端
     public RPCFuture sendRequest(RpcRequest request) {
+        //CountDownLatch这个类能够使一个线程等待其他线程完成各自的工作后再执行。
+       // 例如，应用程序的主线程希望在负责启动框架服务的线程已经启动所有的框架服务之后再执行。
         final CountDownLatch latch = new CountDownLatch(1);
         RPCFuture rpcFuture = new RPCFuture(request);
         pendingRPC.put(request.getRequestId(), rpcFuture);
         channel.writeAndFlush(request).addListener(new ChannelFutureListener() {
             @Override
             public void operationComplete(ChannelFuture future) {
+                //将count值减1
                 latch.countDown();
             }
         });
         try {
+            //调用await()方法的线程会被挂起，它会等待直到count值为0才继续执行
             latch.await();
         } catch (InterruptedException e) {
             logger.error(e.getMessage());

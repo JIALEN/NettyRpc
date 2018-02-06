@@ -80,6 +80,7 @@ public class RPCFuture implements Future<Object> {
 
     public void done(RpcResponse reponse) {
         this.response = reponse;
+        //锁释放
         sync.release(1);
         invokeCallbacks();
         // Threshold
@@ -136,6 +137,7 @@ public class RPCFuture implements Future<Object> {
         private final int done = 1;
         private final int pending = 0;
 
+        //将当前线程挂起
         protected boolean tryAcquire(int acquires) {
             return getState() == done ? true : false;
         }
